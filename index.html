@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GodSim - 3D God Simulator</title>
+
+    <!-- Tailwind CSS for UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- External Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    <script src="lib/OBJLoader.js"></script>
+</head>
+
+<body class="text-white selection:bg-indigo-500/30">
+
+    <!-- Menu UI -->
+    <div id="main-menu" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center flex-col text-white">
+        <h1 class="text-6xl font-bold mb-10 text-indigo-400 drop-shadow-lg tracking-widest">GodSim</h1>
+        <button id="btn-menu-new"
+            class="mb-4 bg-indigo-600 hover:bg-indigo-500 px-8 py-3 rounded text-xl w-64 transition-colors">はじめから</button>
+        <button id="btn-menu-continue"
+            class="mb-4 bg-gray-600 hover:bg-gray-500 px-8 py-3 rounded text-xl w-64 transition-colors">つづきから</button>
+        <button id="btn-menu-save"
+            class="mb-4 bg-gray-600 hover:bg-gray-500 px-8 py-3 rounded text-xl w-64 hidden transition-colors">セーブする</button>
+
+        <div id="save-slots" class="hidden mt-6 bg-gray-900 p-4 rounded w-[400px] max-h-96 overflow-y-auto"></div>
+        <button id="btn-menu-close" class="mt-8 text-gray-400 hover:text-white hidden transition-colors">閉じる</button>
+    </div>
+
+    <!-- Hover Info Tooltip -->
+    <div id="hover-info">Name<br>Age</div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer" class="p-4">
+
+        <!-- Top Bar: Title, Seed input, and World Info -->
+        <div class="flex justify-between items-start w-full">
+            <div class="glass-panel p-3 pointer-events-auto flex items-center gap-4">
+                <h1 class="text-xl font-bold tracking-wider text-indigo-300">GENESIS <span
+                        class="text-sm text-gray-400 font-normal">v1.0</span></h1>
+
+                <div class="flex items-center gap-2 border-l border-gray-600 pl-4">
+                    <label class="text-xs text-gray-400 uppercase">Seed:</label>
+                    <input type="text" id="seed-input" value="42"
+                        class="bg-gray-800 text-white text-sm rounded px-2 py-1 w-24 border border-gray-700 focus:outline-none focus:border-indigo-500">
+                    <button id="btn-generate"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded transition-colors">再生成</button>
+                </div>
+
+                <!-- セーブ・ロード (menu triggers in input.js or menu.js could use these, but menu handles it now) -->
+                <!-- Still keeping them for backward compatibility if needed, but menu handles load/save -->
+                <div class="flex items-center gap-1 border-l border-gray-600 pl-4">
+                    <!-- We can repurpose these or hide them, let's keep them and maybe attach menu open to them -->
+                    <button id="btn-save"
+                        class="hidden bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded transition-colors"
+                        title="セーブ">💾 Save</button>
+                    <button id="btn-load"
+                        class="hidden bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded transition-colors"
+                        title="ロード">📂 Load</button>
+                </div>
+
+                <!-- 神の権能 (Miracles) -->
+                <div class="flex items-center gap-2 border-l border-gray-600 pl-4">
+                    <button id="btn-miracle-lightning"
+                        class="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-2 py-1 rounded transition-colors border border-yellow-800"
+                        title="天罰 (雷)">⚡雷</button>
+                    <button id="btn-miracle-quake"
+                        class="bg-orange-700 hover:bg-orange-600 text-white text-xs px-2 py-1 rounded transition-colors border border-orange-900"
+                        title="大地震">🌋地震</button>
+                </div>
+
+                <div class="flex items-center gap-4 border-l border-gray-600 pl-4 text-sm">
+                    <div>Day: <span id="ui-day" class="font-mono text-indigo-200">1</span></div>
+                    <div>Time: <span id="ui-time" class="font-mono text-indigo-200">12:00</span></div>
+                    <div>Pop: <span id="ui-pop" class="font-mono text-indigo-200">0</span></div>
+                </div>
+
+                <div class="flex items-center gap-2 border-l border-gray-600 pl-4 text-sm">
+                    <button id="btn-skip-100"
+                        class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-1 px-3 rounded shadow transition-transform active:scale-95 flex items-center space-x-1" title="100年分スキップします">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"></path></svg>
+                        <span>100年スキップ</span>
+                    </button>
+                </div>
+
+                <!-- 暗視モード切替ボタン -->
+                <button id="btn-night-vision"
+                    class="ml-4 p-2 bg-green-900/40 hover:bg-green-700/80 text-green-400 rounded transition-colors text-xs border border-green-800"
+                    title="暗視モード切替">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                        </path>
+                    </svg>
+                </button>
+
+                <!-- カメラ移動速度調整スライダー -->
+                <div class="flex items-center gap-2 border-l border-gray-600 pl-4 ml-4">
+                    <label class="text-xs text-gray-400">Cam Speed:</label>
+                    <input type="range" id="cam-speed-slider" min="0.1" max="5.0" step="0.1" value="1.0"
+                        class="w-20 accent-indigo-500 cursor-pointer" title="カメラの移動速度">
+                </div>
+            </div>
+
+            <!-- Time Controls -->
+            <div class="glass-panel p-2 pointer-events-auto flex gap-2 mr-48">
+                <button id="btn-speed-rewind" class="p-2 hover:bg-red-700 rounded transition-colors text-red-300"
+                    title="巻き戻し (最後のセーブ地点へ)"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                            d="M8.445 14.832A1 1 0 0010 14v-2.798l5.445 3.63A1 1 0 0017 14V6a1 1 0 00-1.555-.832L10 8.798V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z">
+                        </path>
+                    </svg></button>
+                <button id="btn-speed-pause" class="p-2 hover:bg-gray-700 rounded transition-colors" title="停止"><svg
+                        class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
+                            clip-rule="evenodd"></path>
+                    </svg></button>
+                <button id="btn-speed-play" class="p-2 bg-indigo-600/50 hover:bg-indigo-500 rounded transition-colors"
+                    title="通常再生 (1日=2秒)"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                            clip-rule="evenodd"></path>
+                    </svg></button>
+                <button id="btn-speed-fast" class="p-2 hover:bg-gray-700 rounded transition-colors" title="加速"><svg
+                        class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM7.293 6.707a1 1 0 00-1.414 1.414L9.586 10l-3.707 3.707a1 1 0 101.414 1.414l4-4a1 1 0 000-1.414l-4-4z"
+                            clip-rule="evenodd"></path>
+                        <path fill-rule="evenodd"
+                            d="M11.293 6.707a1 1 0 00-1.414 1.414L13.586 10l-3.707 3.707a1 1 0 101.414 1.414l4-4a1 1 0 000-1.414l-4-4z"
+                            clip-rule="evenodd"></path>
+                    </svg></button>
+            </div>
+        </div>
+
+        <!-- Middle Area: Character Info & Actions -->
+        <div class="flex justify-between items-end w-full mt-auto mb-4">
+
+            <div class="flex gap-4 items-end pointer-events-none">
+                <!-- 国家情報パネル -->
+                <div id="nations-panel"
+                    class="glass-panel p-3 w-56 h-64 flex flex-col pointer-events-auto cursor-move relative">
+                    <div
+                        class="text-xs font-semibold text-gray-300 border-b border-gray-700/50 pb-1 mb-2 uppercase tracking-wider flex justify-between drag-handle">
+                        <span>世界の勢力図</span>
+                        <span id="nation-count" class="text-indigo-300">0国</span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 mb-1 cursor-default">※クリックで詳細と技術ツリーを表示</div>
+                    <div id="nations-list"
+                        class="overflow-y-auto flex-1 text-xs space-y-2 pr-1 custom-scrollbar cursor-default">
+                    </div>
+                </div>
+
+                <!-- 国家詳細＆技術ツリーモーダル -->
+                <div id="nation-detail-panel"
+                    class="glass-panel p-4 w-72 pointer-events-auto hidden transform transition-transform duration-300 translate-y-4 opacity-0 border border-indigo-500/50 cursor-move">
+                    <button id="btn-close-nation"
+                        class="absolute top-2 right-2 text-gray-400 hover:text-white transition-colors cursor-pointer"><svg
+                            class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg></button>
+                    <div class="text-xs text-gray-400 mb-1 border-b border-gray-700/50 pb-1 drag-handle">国家詳細レポート</div>
+                    <div class="font-bold text-lg tracking-wider mb-1 flex items-center gap-2 cursor-default"
+                        id="detail-nation-name">
+                        <span id="detail-nation-color" class="w-3 h-3 rounded-full inline-block"></span> <span>-</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs mb-3 bg-gray-800/50 p-2 rounded cursor-default">
+                        <div class="text-gray-400">人口: <span id="detail-nation-pop"
+                                class="text-gray-200 font-mono">0</span></div>
+                        <div class="text-gray-400">資源: <span id="detail-nation-res"
+                                class="text-gray-200 font-mono">0</span></div>
+                        <div class="text-gray-400 col-span-2">外交状態: <span id="detail-nation-diplo"
+                                class="text-red-300">-</span></div>
+                    </div>
+                    <div
+                        class="text-xs font-semibold text-gray-300 border-b border-gray-700/50 pb-1 mb-2 mt-4 uppercase tracking-wider cursor-default">
+                        技術ツリー</div>
+                    <div class="space-y-2 text-xs relative pl-2 border-l-2 border-gray-600 cursor-default"
+                        id="tech-tree-list">
+                    </div>
+                </div>
+
+                <!-- Character Info Panel -->
+                <div id="char-info-panel"
+                    class="glass-panel p-4 w-64 pointer-events-auto hidden transform transition-transform duration-300 translate-y-4 opacity-0 cursor-move">
+                    <button id="btn-close-char"
+                        class="absolute top-2 right-2 text-gray-400 hover:text-white transition-colors cursor-pointer"><svg
+                            class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg></button>
+                    <div class="text-xs text-gray-400 mb-1 border-b border-gray-700/50 pb-1 drag-handle">個体情報</div>
+                    <div class="font-bold text-lg text-yellow-300 tracking-wider mb-2 cursor-default" id="char-name">-
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs mb-3 cursor-default">
+                        <div class="text-gray-400">年齢: <span id="char-age" class="text-gray-200">0</span></div>
+                        <div class="text-gray-400">性別: <span id="char-gender" class="text-gray-200">-</span></div>
+                        <div class="text-gray-400">状態: <span id="char-health" class="text-gray-200">-</span></div>
+                        <div class="text-gray-400">所属: <span id="char-nation" class="text-gray-200">-</span></div>
+                    </div>
+                    <div class="text-xs bg-gray-800/50 p-2 rounded">
+                        <span class="text-gray-400">現在:</span> <span id="char-action" class="text-gray-200">-</span>
+                    </div>
+
+                    <button id="btn-possess"
+                        class="mt-4 w-full bg-purple-600 hover:bg-purple-500 text-white text-xs py-2 rounded transition-colors flex items-center justify-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                            </path>
+                        </svg>
+                        憑依する / 解除
+                    </button>
+                </div>
+            </div>
+
+            <!-- Event Log -->
+            <div id="event-log-panel"
+                class="glass-panel w-80 h-48 flex flex-col pointer-events-auto ml-auto cursor-move">
+                <div
+                    class="bg-gray-800/50 p-2 border-b border-gray-700/50 text-xs font-semibold text-gray-300 rounded-t-lg uppercase tracking-wider drag-handle">
+                    世界の記憶
+                </div>
+                <div id="event-log"
+                    class="p-2 overflow-y-auto flex-1 flex flex-col justify-end text-xs space-y-1 font-mono cursor-default">
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Helper -->
+        <div
+            class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center pointer-events-none opacity-80 z-0">
+            <p class="text-xs text-gray-300 font-mono drop-shadow-md">Left Click: Rotate/Select | Right Click: Pan |
+                Scroll: Zoom | <span class="text-indigo-300 font-bold">Minimap Click: Teleport</span> | <span
+                    class="text-green-300">Drag UI Panels</span> | <span class="text-yellow-200">Esc: Menu</span><br>
+                <span id="possess-hint"
+                    class="hidden text-purple-300 font-bold bg-black/70 p-2 rounded text-sm shadow-lg border border-purple-500 mt-2 inline-block">憑依中:
+                    [W][A][S][D]で移動 / [F]で奇跡(小) / <span class="text-yellow-400">[C]で現代知識チート</span></span>
+            </p>
+        </div>
+    </div>
+
+    <!-- 奇跡ターゲット用オーバーレイ -->
+    <div id="miracle-overlay"
+        class="absolute inset-0 pointer-events-none hidden flex items-center justify-center z-20 bg-red-900/10">
+        <div class="text-2xl font-bold text-red-500 drop-shadow-[0_0_8px_rgba(0,0,0,0.8)] tracking-widest animate-pulse"
+            id="miracle-text">ターゲットを指定してください...</div>
+    </div>
+
+    <!-- Minimap -->
+    <div id="minimap-container" title="クリックしてテレポート">
+        <canvas id="minimap"></canvas>
+        <canvas id="minimap-overlay"></canvas>
+    </div>
+
+    <!-- 全画面マップオーバーレイ -->
+    <div id="full-map-overlay" class="fixed inset-0 bg-gray-900/95 z-40 hidden flex-col items-center justify-center p-8 backdrop-blur-sm">
+        <div class="w-full max-w-4xl flex justify-between items-end mb-4">
+            <h2 class="text-3xl font-bold text-indigo-300 tracking-widest drop-shadow-md">WORLD MAP</h2>
+            <button id="btn-close-map" class="text-gray-400 hover:text-white transition-colors text-sm px-4 py-2 border border-gray-600 rounded">閉じる (M)</button>
+        </div>
+        <div class="relative bg-black rounded-lg shadow-[0_0_20px_rgba(0,0,0,0.8)] border border-gray-700 overflow-hidden" style="width: 800px; height: 800px;">
+            <canvas id="full-map-canvas" width="800" height="800" class="absolute top-0 left-0"></canvas>
+            <canvas id="full-map-ui" width="800" height="800" class="absolute top-0 left-0 pointer-events-none"></canvas>
+        </div>
+        <p class="text-xs text-gray-400 mt-4">各国家の勢力圏と都市の配置状況</p>
+    </div>
+
+    <!-- Module Entry -->
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>

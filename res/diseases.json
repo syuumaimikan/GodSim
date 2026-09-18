@@ -1,0 +1,11 @@
+[
+  { "name": "黒死病(ペスト)", "contagious": true, "lethality": 0.05, "spreadRadius": 10, "spreadChance": 0.2 },
+  { "name": "結核", "contagious": true, "lethality": 0.02, "spreadRadius": 6, "spreadChance": 0.1 },
+  { "name": "インフルエンザ", "contagious": true, "lethality": 0.01, "spreadRadius": 15, "spreadChance": 0.3 },
+  { "name": "赤痢", "contagious": true, "lethality": 0.03, "spreadRadius": 5, "spreadChance": 0.15 },
+  { "name": "天然痘", "contagious": true, "lethality": 0.04, "spreadRadius": 8, "spreadChance": 0.25 },
+  { "name": "マラリア", "contagious": false, "lethality": 0.03, "spreadRadius": 0, "spreadChance": 0 },
+  { "name": "謎の熱病", "contagious": true, "lethality": 0.015, "spreadRadius": 12, "spreadChance": 0.05 },
+  { "name": "ガン", "contagious": false, "lethality": 0.02, "spreadRadius": 0, "spreadChance": 0 },
+  { "name": "心臓病", "contagious": false, "lethality": 0.025, "spreadRadius": 0, "spreadChance": 0 }
+]

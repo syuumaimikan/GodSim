@@ -1,0 +1,66 @@
+{
+    "tree_oak": {
+        "file": "res/models/tree_oak.obj",
+        "color": 3833140
+    },
+    "tree_pine": {
+        "file": "res/models/tree_pine.obj",
+        "color": 1793568
+    },
+    "tree_birch": {
+        "file": "res/models/tree_birch.obj",
+        "color": 10275941
+    },
+    "tree_dead": {
+        "file": "res/models/tree_dead.obj",
+        "color": 5131854
+    },
+    "tree_autumn": {
+        "file": "res/models/tree_autumn.obj",
+        "color": 14244395
+    },
+    "plant_bush": {
+        "file": "res/models/plant_bush.obj",
+        "color": 6856504
+    },
+    "plant_grass": {
+        "file": "res/models/plant_grass.obj",
+        "color": 8172354
+    },
+    "plant_mushroom": {
+        "file": "res/models/plant_mushroom.obj",
+        "color": 13840175
+    },
+    "plant_cattail": {
+        "file": "res/models/plant_cattail.obj",
+        "color": 6111287
+    },
+    "plant_lilypad": {
+        "file": "res/models/plant_lilypad.obj",
+        "color": 5025616
+    },
+    "house_lvl1": {
+        "file": "res/models/house_lvl1.obj",
+        "color": 14862226
+    },
+    "char_human": {
+        "file": "res/models/char_human.obj",
+        "color": 16764108
+    },
+    "animal_deer": {
+        "file": "res/models/animal_deer.obj",
+        "color": 13416608
+    },
+    "animal_wolf": {
+        "file": "res/models/animal_wolf.obj",
+        "color": 2241365
+    },
+    "animal_fox": {
+        "file": "res/models/animal_fox.obj",
+        "color": 13849600
+    },
+    "animal_bird": {
+        "file": "res/models/animal_bird.obj",
+        "color": 2719929
+    }
+}
