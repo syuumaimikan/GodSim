@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { STATE, GLOBALS } from './state.js';
 import { createMergedGeo, addLog } from './utils.js';
-import { getTerrainHeightAt } from './world.js';
+import { getTerrainHeightAt, getSeaLevelY } from './world.js';
 import { updateCharPanel, hideCharPanel } from './ui.js';
 import { ASSETS } from './loaders.js';
 
@@ -67,7 +67,7 @@ export function initAnimalInstancedMeshes() {
         { key: 'animal_fox', name: 'fox' },
         { key: 'animal_bird', name: 'bird' }
     ];
-    
+
     animals.forEach(anim => {
         const asset = ASSETS[anim.key];
         if (asset && asset.geometry && asset.material) {
@@ -106,6 +106,7 @@ export function spawnCharacter(position) {
         maxLifespan: 55 + Math.floor(Math.random() * 30),
         health: '健康',
         nation: nearestNation ? nearestNation.name : '放浪者',
+        job: JOBS[Math.floor(Math.random() * JOBS.length)],
 
         isDead: false,
         isDetailed: false,

@@ -249,3 +249,30 @@ export function toggleFullMap() {
         overlay.classList.remove('flex');
     }
 }
+
+export function skip100Years() {
+    addLog("100年分時間を進めています...", "system");
+    
+    const steps = 36500; 
+    const delta = 1.0; 
+    
+    if (wasmExports && wasmExports.update) {
+        for (let i = 0; i < steps; i++) {
+            wasmExports.update(delta, 0.5, 0.5);
+        }
+    }
+    
+    import('./entities.js').then(({ updateCharacters, updateAnimals }) => {
+        for (let i = 0; i < steps / 100; i++) { 
+            updateCharacters(delta * 100);
+            updateAnimals(delta * 100);
+        }
+        
+        STATE.worldTime += steps * 0.01;
+        
+        import('./world.js').then(({ updateFlora }) => {
+            updateFlora();
+            addLog("100年の歳月が流れました。", "system");
+        });
+    });
+}

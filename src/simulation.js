@@ -2,7 +2,8 @@ import { CONFIG } from './config.js';
 import { STATE, GLOBALS } from './state.js';
 import { addLog } from './utils.js';
 import { saveSnapshot } from './save.js';
-import { rebuildHouses, getTerrainHeightAt } from './world.js';
+import { rebuildHouses, getTerrainHeightAt, ENV_MAPS, getSeaLevelY } from './world.js';
+import { executeMiracleTornado, executeMiracleQuake, executeMiracleLightning } from './particles.js';
 import { updateNationsUI, updateUI } from './ui.js';
 import { spawnCharacter, generateNationName } from './entities.js';
 
@@ -82,6 +83,34 @@ export function onNewDay() {
         import('./save.js').then(m => m.saveGame(0, true)); // auto save slot 0
     }
     STATE.globalTechLevel += 1;
+
+    // Natural disasters logic
+    if (Math.random() < 0.1) { // 10% chance every day for a disaster
+        const size = CONFIG.worldSize || 2500;
+        const x = (Math.random() - 0.5) * size;
+        const z = (Math.random() - 0.5) * size;
+        const temp = ENV_MAPS.getTemp(x, z);
+        const hum = ENV_MAPS.getHumidity(x, z);
+        
+        if (temp > 0.7 && hum < 0.3 && Math.random() < 0.5) {
+            // High temp, low humidity -> Quake or Lightning (Fire)
+            if (Math.random() < 0.5) {
+                executeMiracleQuake(new THREE.Vector3(x, getTerrainHeightAt(x, z), z));
+                addLog("乾燥地帯で大地震が自然発生しました！", "alert");
+            } else {
+                executeMiracleLightning(new THREE.Vector3(x, getTerrainHeightAt(x, z), z));
+                addLog("乾燥地帯で落雷が発生しました！", "alert");
+            }
+        } else if (temp > 0.6 && hum > 0.6 && Math.random() < 0.5) {
+            // High temp, high humidity -> Tornado
+            executeMiracleTornado(new THREE.Vector3(x, getTerrainHeightAt(x, z), z));
+            addLog("熱帯地域で竜巻が自然発生しました！", "alert");
+        } else if (Math.random() < 0.2) {
+            // Random chance for anywhere
+            executeMiracleLightning(new THREE.Vector3(x, getTerrainHeightAt(x, z), z));
+            addLog("落雷が自然発生しました！", "system");
+        }
+    }
 
     for (let i = STATE.nations.length - 1; i >= 0; i--) {
         const n = STATE.nations[i];

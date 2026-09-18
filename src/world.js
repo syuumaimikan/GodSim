@@ -9,6 +9,11 @@ import { wasmExports, wasmMemory } from './wasm.js';
 
 let nextNationId = 0;
 
+
+export function getSeaLevelY() {
+    return CONFIG.seaLevel * 300; // maxHeight = 300
+}
+
 export function getTerrainHeightAt(x, z) {
     const size = CONFIG.worldSize;
     const maxDist = size / 2;
@@ -150,9 +155,11 @@ export const ENV_MAPS = {
     temp: null,
     humidity: null,
     getTemp: (x, z) => {
+        if (!GLOBALS.simplex) GLOBALS.simplex = new SimplexNoise();
         return GLOBALS.simplex.noise2D(x * 0.002 + 1000, z * 0.002 + 1000) * 0.5 + 0.5; // 0 to 1
     },
     getHumidity: (x, z) => {
+        if (!GLOBALS.simplex) GLOBALS.simplex = new SimplexNoise();
         return GLOBALS.simplex.noise2D(x * 0.003 + 5000, z * 0.003 + 5000) * 0.5 + 0.5; // 0 to 1
     }
 };
@@ -187,7 +194,8 @@ export function populateWorld(scene, worldSize) {
         let temp = ENV_MAPS.getTemp(x, z);
         let hum = ENV_MAPS.getHumidity(x, z);
         
-        if (y > 0.0) {
+        let seaY = CONFIG.seaLevel * 300;
+        if (y > seaY + 2.0) {
             let type = 1; // oak
             if (temp < 0.3) type = 2; // pine
             else if (temp > 0.7 && hum < 0.4) type = 4; // dead
@@ -203,7 +211,7 @@ export function populateWorld(scene, worldSize) {
             
             wasmExports.spawnEntity(type, x, y, z, temp, hum);
             planted++;
-        } else if (y > -10.0) {
+        } else if (y > seaY - 5.0 && y <= seaY + 2.0) {
             // Water plants
             if (GLOBALS.rng() < 0.5) wasmExports.spawnEntity(9, x, y, z, temp, hum); // cattail
             else wasmExports.spawnEntity(10, x, 0.5, z, temp, hum); // lilypad
@@ -238,14 +246,14 @@ export function populateWorld(scene, worldSize) {
         let x = (GLOBALS.rng() - 0.5) * worldSize;
         let z = (GLOBALS.rng() - 0.5) * worldSize;
         let y = getTerrainHeightAt(x, z);
-        if (y > 0) spawnCharacter(new THREE.Vector3(x, y, z));
+        if (y > CONFIG.seaLevel * 300 + 2.0) spawnCharacter(new THREE.Vector3(x, y, z));
     }
 
     for (let i = 0; i < CONFIG.initialAnimals; i++) {
         let x = (GLOBALS.rng() - 0.5) * worldSize;
         let z = (GLOBALS.rng() - 0.5) * worldSize;
         let y = getTerrainHeightAt(x, z);
-        if (y > 0) spawnAnimal(new THREE.Vector3(x, y, z));
+        if (y > CONFIG.seaLevel * 300 + 2.0) spawnAnimal(new THREE.Vector3(x, y, z));
     }
 
     updateNationsUI();
@@ -331,18 +339,7 @@ export function rebuildHouses() {
         GLOBALS.scene.add(GLOBALS.houseInstancedMesh);
     }
 
-    GLOBALS.territoryGroup = new THREE.Group();
-    const tGeo = new THREE.PlaneGeometry(120, 120);
-    tGeo.rotateX(-Math.PI / 2);
 
-    STATE.nations.forEach(n => {
-        const tMat = new THREE.MeshBasicMaterial({ color: n.color, transparent: true, opacity: 0.15, depthWrite: false });
-        const tMesh = new THREE.Mesh(tGeo, tMat);
-        tMesh.position.copy(n.position);
-        tMesh.position.y = getTerrainHeightAt(n.position.x, n.position.z) + 0.5;
-        GLOBALS.territoryGroup.add(tMesh);
-    });
-    GLOBALS.scene.add(GLOBALS.territoryGroup);
 }
 
 export function updateHouses(deltaTime) {
@@ -416,18 +413,49 @@ export function updateMinimapOverlay() {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    STATE.nations.forEach(n => {
-        const cx = (n.position.x / CONFIG.worldSize + 0.5) * canvas.width;
-        const cy = (n.position.z / CONFIG.worldSize + 0.5) * canvas.height;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#' + n.color.getHexString();
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-    });
+    // Draw Voronoi-like borders on minimap
+    if (STATE.nations && STATE.nations.length > 0) {
+        ctx.globalAlpha = 0.3;
+        for (let x = 0; x < canvas.width; x += 4) {
+            for (let y = 0; y < canvas.height; y += 4) {
+                let minDist = Infinity;
+                let closestNation = null;
+                for (const n of STATE.nations) {
+                    if (!n.position) continue;
+                    const nx = (n.position.x / CONFIG.worldSize + 0.5) * canvas.width;
+                    const ny = (n.position.z / CONFIG.worldSize + 0.5) * canvas.height;
+                    const dist = (x - nx) * (x - nx) + (y - ny) * (y - ny);
+                    // Tech level increases border radius
+                    const maxDist = (20 + (n.techLevel || 1) * 2) * (20 + (n.techLevel || 1) * 2);
+                    if (dist < maxDist && dist < minDist) {
+                        minDist = dist;
+                        closestNation = n;
+                    }
+                }
+                if (closestNation) {
+                    ctx.fillStyle = '#' + closestNation.color.getHexString();
+                    ctx.fillRect(x, y, 4, 4);
+                }
+            }
+        }
+        ctx.globalAlpha = 1.0;
 
+        // Draw nation centers
+        STATE.nations.forEach(n => {
+            if (!n.position) return;
+            const cx = (n.position.x / CONFIG.worldSize + 0.5) * canvas.width;
+            const cy = (n.position.z / CONFIG.worldSize + 0.5) * canvas.height;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#' + n.color.getHexString();
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        });
+    }
+
+    // Draw camera
     if (GLOBALS.camera) {
         const cx = (GLOBALS.camera.position.x / CONFIG.worldSize + 0.5) * canvas.width;
         const cy = (GLOBALS.camera.position.z / CONFIG.worldSize + 0.5) * canvas.height;
